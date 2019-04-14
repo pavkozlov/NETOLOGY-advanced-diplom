@@ -48,7 +48,7 @@ class VKinder:
         if vkinder_db.all_people.count_documents({}) == 0:
             all_users = self.get_users()
             formated_list = list()
-            pattern = re.escape(', ')
+            pattern = '[.,;]'
             pattern = re.compile(pattern)
 
             for peoples in all_users:
@@ -104,21 +104,22 @@ class VKinder:
     def get_own_books_and_interests(self):
 
         if vkinder_db.own_account.count_documents({}) == 0:
+
             result = self.vk.users.get(fields='books,interests,music')
-            pattern = re.escape(', ')
+            pattern = '[.,;]'
             pattern = re.compile(pattern)
-            my_books = re.split(pattern, result[0]['books'])
+            my_books = result[0]['books'].split()
 
             if len(my_books) == 0:
                 my_books = input("Введите ваши предпочтения в книгах: ")
                 my_books = re.split(pattern, my_books)
 
-            my_music = re.split(pattern, result[0]['music'])
+            my_music = result[0]['music']
             if len(my_music) == 0:
                 my_music = input("Введите ваши предпочтения в музыке: ")
                 my_music = re.split(pattern, my_music)
 
-            my_interests = re.split(pattern, result[0]['interests'])
+            my_interests = result[0]['interests']
             if len(my_interests) == 0:
                 my_interests = input("Введите ваши интересы: ")
                 my_interests = re.split(pattern, my_interests)
@@ -136,4 +137,4 @@ class VKinder:
 
 
 if __name__ == '__main__':
-    pavel_kozlov = VKinder(token=False, age_from=19, age_to=20)
+    pavel_kozlov = VKinder(token=False, age_from=19, age_to=23)
