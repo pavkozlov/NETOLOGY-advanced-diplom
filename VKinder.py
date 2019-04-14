@@ -1,9 +1,17 @@
+import datetime
 import vk_api
 from urllib.parse import urlencode
 import re
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import time
+from pymongo import MongoClient
+
+client = MongoClient()
+vkinder_db = client.vkinder_db
+
+LOGIN = ''
+PASSWORD = ''
 
 
 def get_access_token(my_login, my_password):
@@ -35,18 +43,26 @@ def get_access_token(my_login, my_password):
     return res
 
 
-access_token = get_access_token('login', 'password')
-
-
 class VKinder:
-    def __init__(self, **kwargs):
-        self.vk = self.authorize_in_vk()
+    def __init__(self, token=True, **kwargs):
+        if token:
+            self.vk = self.authorize_in_vk_by_token()
+        else:
+            self.vk = self.authorize_in_vk_by_login()
         self.find_gender = self.get_own_gender()
         self.city = self.get_own_city()
         self.kwargs = kwargs
+        self.write_into_db()
 
-    def authorize_in_vk(self):
+    def authorize_in_vk_by_token(self):
+        access_token = get_access_token(LOGIN, PASSWORD)
         vk_session = vk_api.VkApi(token=access_token)
+        vk = vk_session.get_api()
+        return vk
+
+    def authorize_in_vk_by_login(self):
+        vk_session = vk_api.VkApi(login=LOGIN, password=PASSWORD)
+        vk_session.auth()
         vk = vk_session.get_api()
         return vk
 
@@ -55,8 +71,42 @@ class VKinder:
             self.kwargs['sex'] = self.find_gender
         if self.kwargs.get('city') == None:
             self.kwargs['city'] = self.city
-        search = self.vk.users.search(count=1000, fields='books,interests,age', **self.kwargs)
+        search = self.vk.users.search(count=1000, fields='books,interests,music', **self.kwargs)
         return search['items']
+
+    def write_into_db(self):
+        if vkinder_db.all_people.count_documents({}) == 0:
+            all_users = self.get_users()
+            formated_list = list()
+            for people in all_users:
+                user = dict()
+                user['first_name'] = people['first_name']
+                user['last_name'] = people['last_name']
+                try:
+                    user['books'] = people['books']
+                except KeyError:
+                    user['books'] = ''
+                try:
+                    user['music'] = people['music']
+                except KeyError:
+                    user['music'] = ''
+                try:
+                    user['interests'] = people['interests']
+                except KeyError:
+                    user['interests'] = ''
+                user['id'] = people['id']
+                user['added_time'] = datetime.datetime.now()
+                formated_list.append(user)
+            vkinder_db.all_people.insert_many(formated_list)
+
+    def find_by_books(self, name):
+        escaped_name = re.escape(name)
+        pattern = re.compile(r'(.*?{}.*?)'.format(escaped_name), re.IGNORECASE)
+        res = vkinder_db.all_people.find({'books': pattern})
+        result = list()
+        for item in res:
+            result.append([item['id'], item['first_name'], item['last_name'], item['books']])
+        return result
 
     def get_own_city(self):
         city = self.vk.account.getProfileInfo()['city']['id']
@@ -69,15 +119,8 @@ class VKinder:
         else:
             return 1
 
-    def get_users_with_books_and_interests(self):
-        result = list()
-        user_list = self.get_users()
-        for user in user_list:
-            if user.get('books') and user.get('interests'):
-                result.append(user)
-        return result
-
 
 if __name__ == '__main__':
-    pavel_kozlov = VKinder(sex=2)
-    print(pavel_kozlov.get_users_with_books_and_interests())
+    pavel_kozlov = VKinder()
+    for i in pavel_kozlov.find_by_books('Кийосаки'):
+        print(i)
