@@ -40,7 +40,7 @@ class VKinder:
 
         result = list()
         for i in range(self.age_from, self.age_to + 1):
-            search = self.vk.users.search(count=10, fields='books,interests,music', age_from=i, age_to=i, **self.kwargs)
+            search = self.vk.users.search(count=1000, fields='books,interests,music', age_from=i, age_to=i, **self.kwargs)
             result.append(search['items'])
         return result
 
@@ -48,7 +48,7 @@ class VKinder:
         if vkinder_db.all_people.count_documents({}) == 0:
             all_users = self.get_users()
             formated_list = list()
-            pattern = '[.,;]'
+            pattern = ',\s?|\.\s?,?'
             pattern = re.compile(pattern)
 
             for peoples in all_users:
@@ -59,28 +59,37 @@ class VKinder:
                     user['last_name'] = people['last_name']
 
                     try:
-                        user['books'] = re.split(pattern, people['books'])
+                        user_books = people['books']
+                        if len(user_books) > 0:
+                            user['books'] = re.split(pattern, user_books)
+                        else:
+                            raise KeyError
                     except KeyError:
                         user['books'] = list()
 
                     try:
-                        user['music'] = re.split(pattern, people['music'])
+                        user_music = people['music']
+                        if len(user_music) > 0:
+                            user['music'] = re.split(pattern, user_music)
+                        else:
+                            raise KeyError
                     except KeyError:
                         user['music'] = list()
 
                     try:
-                        user['interests'] = re.split(pattern, people['interests'])
+                        user_interests = people['interests']
+                        if len(user_interests) > 0:
+                            user['interests'] = re.split(pattern, user_interests)
+                        else:
+                            raise KeyError
                     except KeyError:
                         user['interests'] = list()
-
-                    user['id'] = people['id']
-                    user['added_time'] = datetime.datetime.now()
 
                     try:
                         user_groups = self.find_groups(people['id'])
                         user['groups'] = user_groups
                     except vk_api.exceptions.ApiError:
-                        user['groups'] = ''
+                        user['groups'] = list()
 
                     formated_list.append(user)
 
@@ -135,6 +144,48 @@ class VKinder:
                 'groups': self.find_groups()
             })
 
+    def find_ideal(self):
+        ideal_for_me = list()
+        me = vkinder_db.own_account.find({})
+        partners = vkinder_db.all_people.find({})
+
+        my_books = me[0]['books']
+        re_books = "(" + ")|(".join(my_books) + ")"
+        re_books = re.compile(re_books)
+
+        my_music = me[0]['music']
+        re_music = "(" + ")|(".join(my_music) + ")"
+        re_music = re.compile(re_music)
+
+        my_interests = me[0]['interests']
+        re_interests = "(" + ")|(".join(my_interests) + ")"
+        re_interests = re.compile(re_interests)
+
+        my_groups = me[0]['groups']
+
+        for i in partners:
+
+            both_in_group = list(set(i['groups']).intersection(my_groups))
+            if len(both_in_group) > 0 and i not in ideal_for_me:
+                ideal_for_me.append(i)
+
+            same_books = list(filter(re_books.search, i['books']))
+            if len(same_books) > 0 and i not in ideal_for_me:
+                ideal_for_me.append(i)
+
+            same_music = list(filter(re_music.search, i['music']))
+            if len(same_music) > 0 and i not in ideal_for_me:
+                ideal_for_me.append(i)
+
+            same_interests = list(filter(re_interests.search, i['interests']))
+            if len(same_interests) > 0 and i not in ideal_for_me:
+                ideal_for_me.append(i)
+
+            del i
+
+        vkinder_db.ideal_partner.insert_many(ideal_for_me)
+
 
 if __name__ == '__main__':
-    pavel_kozlov = VKinder(token=False, age_from=19, age_to=23)
+    pavel_kozlov = VKinder(token=False, age_from=18, age_to=20)
+    pavel_kozlov.find_ideal()
