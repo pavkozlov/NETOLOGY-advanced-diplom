@@ -3,7 +3,8 @@ import vk_api
 from pymongo import MongoClient
 import re
 
-TOKEN = '7aea4bcb72aa437b3b5c739a6acf43deeab50869788cd4579d4cacd5aa83ec2f3e000297025eba5ff9e01'
+# INSERT TOKEN HERE
+TOKEN = ''
 
 
 class VKinderDatabase:
@@ -68,8 +69,7 @@ class VKinderVK:
     def search_users(self, count=10):
         result = list()
         for i in range(self.age_from, self.age_to + 1):
-            search = self.vk.users.search(count=count, fields='books,interests,music', age_from=i, age_to=i,
-                                          city=self.city, sex=self.sex)
+            search = self.vk.users.search(count=count, fields='books,interests,music', age_from=i, age_to=i, city=self.city, sex=self.sex)
             result += search['items']
         return result
 
