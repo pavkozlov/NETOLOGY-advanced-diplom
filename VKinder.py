@@ -7,6 +7,15 @@ import re
 TOKEN = ''
 
 
+def authorize_by_token():
+    vk_session = vk_api.VkApi(token=TOKEN)
+    vk = vk_session.get_api()
+    return vk
+
+
+VK = authorize_by_token()
+
+
 class VKinderDatabase:
     def __init__(self):
         self.client = MongoClient()
@@ -39,7 +48,7 @@ class VKinderDatabase:
 
 class VKinderVK:
     def __init__(self, age_from=18, age_to=18, **kwargs):
-        self.vk = self.authorize_by_token()
+
         self.age_from = age_from
         self.age_to = age_to
 
@@ -53,32 +62,28 @@ class VKinderVK:
         else:
             self.city = self.get_city()
 
-    def authorize_by_token(self):
-        vk_session = vk_api.VkApi(token=TOKEN)
-        vk = vk_session.get_api()
-        return vk
-
     def get_city(self):
-        city = self.vk.account.getProfileInfo()['city']['id']
+        city = VK.account.getProfileInfo()['city']['id']
         return city
 
     def get_sex(self):
-        sex = self.vk.account.getProfileInfo()['sex']
+        sex = VK.account.getProfileInfo()['sex']
         return 2 if sex == 1 else 1
 
     def search_users(self, count=10):
         result = list()
         for i in range(self.age_from, self.age_to + 1):
-            search = self.vk.users.search(count=count, fields='books,interests,music', age_from=i, age_to=i, city=self.city, sex=self.sex)
+            search = VK.users.search(count=count, fields='books,interests,music', age_from=i, age_to=i,
+                                     city=self.city, sex=self.sex)
             result += search['items']
         return result
 
     def get_groups(self, user_id=None):
-        result = self.vk.groups.get(user_id=user_id)['items']
+        result = VK.groups.get(user_id=user_id)['items']
         return result
 
     def get_my_profile(self):
-        result = self.vk.users.get(fields='books,interests,music')[0]
+        result = VK.users.get(fields='books,interests,music')[0]
         if len(result['books']) == 0:
             result['books'] = input("Введите ваши предпочтения в книгах: ")
         if len(result['music']) == 0:
@@ -110,7 +115,8 @@ class VKinderData:
                 user['interests'] = ''
 
             try:
-                user_groups = VKinderVK.get_groups(self=VKinderVK(), user_id=people['id'])
+                vk = VKinderVK()
+                user_groups = vk.get_groups(user_id=people['id'])
                 user['groups'] = user_groups
             except vk_api.exceptions.ApiError:
                 user['groups'] = list()
@@ -120,13 +126,14 @@ class VKinderData:
         return result
 
     def format_my_profile(self, my_profile):
+        vk = VKinderVK()
         result = {
             'first_name': my_profile['first_name'],
             'last_name': my_profile['last_name'],
             'books': my_profile['books'],
             'music': my_profile['music'],
             'interests': my_profile['interests'],
-            'groups': VKinderVK.get_groups(self=VKinderVK()),
+            'groups': vk.get_groups(),
             'added_time': datetime.datetime.now()
         }
         return result
@@ -170,8 +177,8 @@ class VKinderSearch:
 
 
 def run():
-    vk = VKinderVK(age_from=18, age_to=200)
-    users = vk.search_users(count=100)
+    vk = VKinderVK(age_from=18, age_to=18)
+    users = vk.search_users(count=10)
     my_account = vk.get_my_profile()
 
     vk_data = VKinderData()
