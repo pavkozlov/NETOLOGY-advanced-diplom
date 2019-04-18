@@ -26,7 +26,7 @@ class VKinderDatabase:
             self.vkinder_db.all_people.insert_many(my_list)
 
     def find_all_people(self):
-        result = self.vkinder_db.all_people.find({})
+        result = list(self.vkinder_db.all_people.find({}))
         return result
 
     def insert_one(self, my_dict):
@@ -42,7 +42,7 @@ class VKinderDatabase:
             self.vkinder_db.partners.insert_many(my_list)
 
     def find_many_partners(self):
-        result = self.vkinder_db.partners.find({})
+        result = list(self.vkinder_db.partners.find({}))
         return result
 
 
