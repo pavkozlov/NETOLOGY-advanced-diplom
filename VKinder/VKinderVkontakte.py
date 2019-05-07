@@ -29,7 +29,11 @@ class VKinderVK:
             self.city = self.get_city()
 
     def get_city(self):
-        city = self.VK.users.get(user_ids=self.id, fields='city')[0]['city']['id']
+        try:
+            city = self.VK.users.get(user_ids=self.id, fields='city')[0]['city']['id']
+        except KeyError:
+            print('Пользователь не указал город. Выствлен город: Москва.')
+            city = 1
         return city
 
     def get_sex(self):
@@ -45,8 +49,12 @@ class VKinderVK:
         return result
 
     def get_groups(self):
-        result = self.VK.groups.get(user_id=self.id)['items']
-        return result
+        try:
+            result = self.VK.groups.get(user_id=self.id)['items']
+            return result
+        except vk_api.exceptions.ApiError:
+            result = list()
+            return result
 
     def is_member(self, group_id, users):
         try:
@@ -58,10 +66,28 @@ class VKinderVK:
 
     def get_my_profile(self):
         result = self.VK.users.get(user_ids=self.id, fields='books,interests,music')[0]
-        if len(result['books']) == 0:
+
+        if result.get('books') is None or len(result['books']) == 0:
             result['books'] = input("Введите ваши предпочтения в книгах: ")
-        if len(result['music']) == 0:
+
+        if result.get('music') is None or len(result['music']) == 0:
             result['music'] = input("Введите ваши предпочтения в музыке: ")
-        if len(result['interests']) == 0:
+
+        if result.get('interests') is None or len(result['interests']) == 0:
             result['interests'] = input("Введите ваши интересы: ")
         return result
+
+    def get_top_photo(self, user_id):
+        result = self.VK.photos.get(owner_id=user_id, album_id='profile', extended=True)
+        my_dict = list()
+        for i in result['items']:
+            url = i['sizes'][len(i['sizes']) - 1]['url']
+            likes = i['likes']['count']
+            my_dict.append({
+                'url': url,
+                'likes': likes
+            })
+        my_dict = sorted(my_dict, key=lambda x: x['likes'], reverse=True)
+        if len(my_dict) > 3:
+            my_dict = my_dict[:3]
+        return my_dict

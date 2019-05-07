@@ -17,18 +17,24 @@ class VKinderData:
         user_ids = ','.join(user_ids)
 
         my_groups = self.vk.get_groups()
-        if len(my_groups) > 0:
-            with_groups = list()
-            for i in my_groups:
-                res = self.vk.is_member(i, user_ids)
-                for user in res:
-                    if user['member'] == 1:
-                        with_groups.append(user['user_id'])
-            self.with_groups = with_groups
-            return with_groups
-        else:
+        if my_groups == None:
             result = list()
+            self.with_groups = result
             return result
+        else:
+            if len(my_groups) > 0:
+                with_groups = list()
+                for i in my_groups:
+                    res = self.vk.is_member(i, user_ids)
+                    for user in res:
+                        if user['member'] == 1:
+                            with_groups.append(user['user_id'])
+                self.with_groups = with_groups
+                return with_groups
+            else:
+                result = list()
+                self.with_groups = result
+                return result
 
     def format_users(self):
         result = list()
@@ -42,7 +48,7 @@ class VKinderData:
             user['music'] = people['music'] if people.get('music') else ''
             user['interests'] = people['interests'] if people.get('interests') else ''
 
-            if people['id'] in self.with_groups:
+            if self.with_groups is not None and people['id'] in self.with_groups:
                 user['groups'] = True
             else:
                 user['groups'] = False

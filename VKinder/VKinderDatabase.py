@@ -1,9 +1,10 @@
 from pymongo import MongoClient
+import config
 
 
 class VKinderDatabase:
     def __init__(self):
-        self.client = MongoClient()
+        self.client = MongoClient(host=config.DB_PARAMS['Hostname'], port=config.DB_PARAMS['Port'])
         self.vkinder_db = self.client.vkinder_db
 
     def insert_many_people(self, my_list):
