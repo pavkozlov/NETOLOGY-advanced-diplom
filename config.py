@@ -5,7 +5,9 @@ DB_PARAMS = {
 
 AUTH_PARAMS = {
     'ID': None,
-    'TOKEN': None
+    'TOKEN': None,
+    'AGE_FROM': 18,
+    'AGE_TO': 23
 }
 
 SEARCH_PARAMS = {

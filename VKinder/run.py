@@ -3,6 +3,7 @@ import config
 import logging
 import vk_api
 import datetime
+import pymongo
 
 
 def run():
@@ -14,11 +15,13 @@ def run():
         try:
             token = config.AUTH_PARAMS['TOKEN'] if config.AUTH_PARAMS['TOKEN'] else input('Введите токен: ')
             id = config.AUTH_PARAMS['ID'] if config.AUTH_PARAMS['ID'] else input('Введите ID: ')
-            vkinder_vk = VKinderVkontakte.VKinderVK(age_from=18, age_to=23, id=id, token=token)
+            vkinder_vk = VKinderVkontakte.VKinderVK(age_from=config.AUTH_PARAMS['AGE_FROM'],
+                                                    age_to=config.AUTH_PARAMS['AGE_TO'], id=id, token=token)
             vkinder_vk.authorize_by_token()
             log.info('Авторизовались в ВК')
         except vk_api.exceptions.ApiError:
             log.warning('Не удалось авторизоваться в ВК!')
+            raise vk_api.exceptions.ApiError
 
         vkinder_vk.get_city_and_sex()
         my_account = vkinder_vk.get_my_profile()
@@ -89,12 +92,28 @@ def run():
             i['photos'] = ph
         log.info('Нашли для каждого аккаунта ТОП3 фото')
 
+        try:
+            vkinder_db = VKinderDatabase.VKinderDatabase()
+            if vkinder_db.vkinder_db.own_account.count_documents({}) == 0:
+                vkinder_db.insert_one(my_account)
+            if vkinder_db.vkinder_db.all_people.count_documents({}) == 0:
+                vkinder_db.insert_many_people(formated_users)
+            else:
+                alredy_writed_users = vkinder_db.find_all_people()
+                new_formated_users = list(filter(lambda x: x not in alredy_writed_users, formated_users))
+                if len(new_formated_users) > 0: vkinder_db.insert_many_people(new_formated_users)
+            if vkinder_db.vkinder_db.partners.count_documents({}) == 0:
+                vkinder_db.insert_many_partners(res)
+            else:
+                alredy_writed_partners = vkinder_db.find_many_partners()
+                new_partners = list(filter(lambda x: x not in alredy_writed_partners, res))
+                if len(new_partners) > 0: vkinder_db.insert_many_partners(new_partners)
+            log.info('Подключились к БД')
+        except pymongo.errors.ServerSelectionTimeoutError:
+            log.warning('Ошибка при подключении к БД')
+            raise pymongo.errors.ServerSelectionTimeoutError
         vk_find.get_json(result)
-        vkinder_db = VKinderDatabase.VKinderDatabase()
-        vkinder_db.insert_many_people(formated_users)
-        vkinder_db.insert_one(my_account)
-        vkinder_db.insert_many_partners(res)
-        log.info('Подключились к БД и записали всё, создали JSON файл')
+        log.info('Записали всё, создали JSON файл')
         log.info('\t === Закончили работу === \t')
     except KeyboardInterrupt:
         log.warning('\t === Прервали досрочно! === \t')

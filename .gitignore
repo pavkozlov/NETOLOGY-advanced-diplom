@@ -1,0 +1,5 @@
+.idea/
+VKinder/__pycache__/
+__pycache__/
+sample.log
+result.json
